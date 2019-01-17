@@ -108,6 +108,8 @@ recv() { echo "< $@" >&2; }
 send() { echo "> $@" >&2;
          printf '%s\r\n' "$*"; }
 
+
+
 [[ $UID = 0 ]] && warn "It is not recommended to run bashttpd as root."
 
 DATE=$(date +"%a, %d %b %Y %H:%M:%S %Z")
@@ -147,6 +149,21 @@ send_response_ok_exit() { send_response 200; exit 0; }
 fail_with() {
    send_response "$1" <<< "$1 ${HTTP_RESPONSE[$1]}"
    exit 1
+}
+
+auth() {
+  string=$@;
+  if [[ $string == *"Authorization"* ]]; then
+    if [[ $string != *"USERNAME"* ]]; then
+      fail_with 403
+    fi
+  fi
+
+  if [[ $string == *"AUTH_KEY"* ]]; then
+    if [[ $string != *"1234"* ]]; then
+      fail_with 403
+    fi
+  fi
 }
 
 serve_file() {
@@ -271,7 +288,7 @@ declare -a REQUEST_HEADERS
 while read -r line; do
    line=${line%%$'\r'}
    recv "$line"
-
+   auth "$line"
    # If we've reached the end of the headers, break.
    [ -z "$line" ] && break
 
